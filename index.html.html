@@ -1,0 +1,798 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Public+Sans%3Awght%40400%3B500%3B700%3B900"
+    />
+    <title>Dictation</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.sh/@google/genai@^1.1.0"
+      }
+    }
+    </script>
+
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+</head>
+  <body>
+    <div
+      class="relative flex size-full min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden"
+      style='font-family: "Public Sans", "Noto Sans", sans-serif;'
+    >
+      <div class="flex-grow">
+        <div class="flex items-center bg-slate-50 p-4 pb-2 justify-center">
+          <h2 class="text-[#0d141c] text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Dictation</h2>
+        </div>
+        <div class="pb-3">
+          <div class="flex border-b border-[#cedbe8] px-4 gap-2 sm:gap-4 justify-center">
+            <a id="tab-diary" class="category-tab flex flex-col items-center justify-center border-b-[3px] text-center flex-1 sm:flex-none border-b-[#0c7ff2] text-[#0d141c] pb-[13px] pt-4 cursor-pointer" data-category="Diary">
+              <p class="text-sm font-bold leading-normal tracking-[0.015em]">Diary</p>
+            </a>
+            <a id="tab-ideas" class="category-tab flex flex-col items-center justify-center border-b-[3px] text-center flex-1 sm:flex-none border-b-transparent text-[#49739c] pb-[13px] pt-4 cursor-pointer" data-category="Ideas">
+              <p class="text-sm font-bold leading-normal tracking-[0.015em]">Ideas</p>
+            </a>
+            <a id="tab-notes" class="category-tab flex flex-col items-center justify-center border-b-[3px] text-center flex-1 sm:flex-none border-b-transparent text-[#49739c] pb-[13px] pt-4 cursor-pointer" data-category="Notes">
+              <p class="text-sm font-bold leading-normal tracking-[0.015em]">Notes</p>
+            </a>
+            <a id="tab-all" class="category-tab flex flex-col items-center justify-center border-b-[3px] text-center flex-1 sm:flex-none border-b-transparent text-[#49739c] pb-[13px] pt-4 cursor-pointer" data-category="All">
+              <p class="text-sm font-bold leading-normal tracking-[0.015em]">All Notes</p>
+            </a>
+          </div>
+        </div>
+        <div class="flex px-4 py-3 justify-center">
+          <button
+            id="dictationButton"
+            class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-[#0c7ff2] text-slate-50 text-base font-bold leading-normal tracking-[0.015em] hover:bg-[#0a6ac7] transition-colors duration-150"
+          >
+            <span class="truncate" id="dictationButtonText">Start Dictation</span>
+          </button>
+        </div>
+        <div id="statusMessage" class="text-slate-600 text-sm text-center py-1 px-4"></div>
+        
+        <h2 id="polishedDictationTitle" class="text-[#0d141c] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Current Dictation</h2>
+        <div class="mx-4 mb-3 p-4 bg-white rounded-md shadow">
+            <p id="polishedDictationContent" class="text-[#0d141c] text-base font-normal leading-normal whitespace-pre-wrap min-h-[100px]">
+            </p>
+        </div>
+        <div class="flex px-4 pb-3 justify-center">
+            <button
+              id="saveToDriveButton"
+              disabled
+              class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-green-600 text-slate-50 text-sm font-bold leading-normal tracking-[0.015em] hover:bg-green-700 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span class="truncate" id="saveToDriveButtonText">Save to Google Drive</span>
+            </button>
+          </div>
+
+        <div class="px-4 pt-8 pb-4">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-[#0d141c] text-xl font-bold leading-tight tracking-[-0.015em]">Past Dictations</h2>
+            <p id="totalWordCount" class="text-[#49739c] text-sm font-medium">Total words: 0</p>
+          </div>
+          <div id="pastNotesList" class="space-y-3">
+            <!-- Past notes will be rendered here by JavaScript -->
+            <p id="noNotesMessage" class="text-slate-500 text-center py-4">No dictations found for this category.</p>
+          </div>
+        </div>
+      </div>
+      <div class="h-5 bg-slate-50"></div>
+    </div>
+
+    <script type="module">
+      import { GoogleGenAI } from '@google/genai';
+
+      // --- START OF API KEY CONFIGURATION ---
+      // IMPORTANT: Replace the placeholder values below with your actual API keys.
+      // 1. Gemini API Key (for transcription and note polishing)
+      const GEMINI_API_KEY = 'AIzaSyBV_7F65BuncR-VqdIr27SUgfRkDcRhNmY'; // <--- REPLACE THIS!
+
+      // 2. Google API Key (for Google Picker and Drive API features)
+      //    Get this from Google Cloud Console.
+      const GOOGLE_API_KEY = 'AIzaSyBiF93RRqjCRTqm3aaPyLXmt4kx2cRh8jM
+'; // <--- REPLACE THIS!
+
+      // 3. Google OAuth 2.0 Client ID (for Google Drive authentication)
+      //    Get this from Google Cloud Console (Web application type).
+      //    Ensure your JavaScript origins (e.g., http://localhost:PORT or your deployed app URL like https://yourusername.github.io) are authorized.
+      const GOOGLE_CLIENT_ID = '1078561331282-q5j9ic06hff6l3rc26sdp5j0ea5qm36g.apps.googleusercontent.com'; // <--- REPLACE THIS!
+      // --- END OF API KEY CONFIGURATION ---
+
+      const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+      const MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
+      const LOCAL_STORAGE_KEY = 'dictationAppNotes';
+      const INITIAL_TITLE = "Current Dictation";
+
+      let genAI;
+
+      // DOM Elements
+      let dictationButton;
+      let dictationButtonText;
+      let polishedDictationTitleElement;
+      let polishedDictationContentElement;
+      let statusMessageElement;
+      let categoryTabs;
+      let pastNotesListElement;
+      let noNotesMessageElement;
+      let totalWordCountElement;
+      let saveToDriveButton;
+      let saveToDriveButtonText;
+
+      // App State
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let isRecording = false;
+      let currentStream = null;
+      let currentPolishedText = null;
+      let currentPolishedTitle = INITIAL_TITLE;
+
+      let savedNotes = [];
+      let currentCategory = 'Diary';
+
+      const PLACEHOLDER_TEXT = "Your polished dictation will appear here. It will be saved automatically to local storage.";
+      const START_BUTTON_TEXT = "Start Dictation";
+      const STOP_BUTTON_TEXT = "Stop Dictation";
+      const PROCESSING_BUTTON_TEXT = "Processing...";
+
+      // Google API State
+      let gapiLoaded = false;
+      let gisLoaded = false;
+      let pickerApiLoaded = false;
+      let googleTokenClient = null;
+      let googleAccessToken = null;
+
+      // Utility Functions
+      function countWords(text) {
+        if (!text || text.trim() === '') return 0;
+        return text.trim().split(/\s+/).length;
+      }
+
+      function generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substring(2);
+      }
+
+      function localGenerateTitle(text) {
+          const words = text.trim().split(/\s+/);
+          if (words.length === 0) return "Untitled Note";
+          if (words.length <= 5) return words.join(" ");
+          return words.slice(0, 5).join(" ") + "...";
+      }
+
+      // UI Update Functions
+      function updateStatus(message, isError = false) {
+        if (statusMessageElement) {
+          statusMessageElement.textContent = message;
+          statusMessageElement.className = `text-sm text-center py-1 px-4 ${
+            isError ? 'text-red-600 font-semibold' : 'text-slate-600'
+          }`;
+        }
+      }
+
+      function updateButtonState(text, disabled) {
+        if (dictationButtonText) {
+          dictationButtonText.textContent = text;
+        }
+        if (dictationButton) {
+          dictationButton.disabled = disabled;
+          if (disabled) {
+            dictationButton.classList.add('opacity-70', 'cursor-not-allowed');
+            dictationButton.classList.remove('hover:bg-[#0a6ac7]');
+          } else {
+            dictationButton.classList.remove('opacity-70', 'cursor-not-allowed');
+            dictationButton.classList.add('hover:bg-[#0a6ac7]');
+          }
+        }
+      }
+
+      function updateSaveToDriveButton(text, disabled) {
+          if (saveToDriveButtonText) saveToDriveButtonText.textContent = text;
+          if (saveToDriveButton) saveToDriveButton.disabled = disabled;
+      }
+
+      function displayCurrentPolishedNote(text, title) {
+        currentPolishedText = text;
+        currentPolishedTitle = title || INITIAL_TITLE;
+
+        if (polishedDictationContentElement) {
+          polishedDictationContentElement.textContent = text;
+        }
+        if (polishedDictationTitleElement) {
+          polishedDictationTitleElement.textContent = currentPolishedTitle;
+        }
+        if (currentPolishedText && currentPolishedText.trim() !== '' && pickerApiLoaded && googleTokenClient) {
+          updateSaveToDriveButton('Save to Google Drive', false);
+        } else if (pickerApiLoaded && googleTokenClient) {
+           updateSaveToDriveButton('Save to Google Drive', true);
+        } else {
+           updateSaveToDriveButton('Loading Drive...', true);
+        }
+      }
+
+      function resetToReadyState(statusText) {
+          updateButtonState(START_BUTTON_TEXT, false);
+          updateStatus(statusText || "Ready to dictate.");
+          isRecording = false;
+          if (currentStream) {
+              currentStream.getTracks().forEach(track => track.stop());
+              currentStream = null;
+          }
+          mediaRecorder = null;
+          audioChunks = [];
+          if (currentPolishedText && pickerApiLoaded && googleTokenClient) {
+              updateSaveToDriveButton('Save to Google Drive', false);
+          }
+      }
+
+      function setActiveTab() {
+        categoryTabs.forEach(tab => {
+          if (tab.dataset.category === currentCategory) {
+            tab.classList.remove('border-b-transparent', 'text-[#49739c]');
+            tab.classList.add('border-b-[#0c7ff2]', 'text-[#0d141c]');
+          } else {
+            tab.classList.remove('border-b-[#0c7ff2]', 'text-[#0d141c]');
+            tab.classList.add('border-b-transparent', 'text-[#49739c]');
+          }
+        });
+      }
+
+      function renderPastNotes() {
+        if (!pastNotesListElement || !noNotesMessageElement || !totalWordCountElement) return;
+        pastNotesListElement.innerHTML = '';
+        const notesToDisplay = currentCategory === 'All'
+          ? savedNotes
+          : savedNotes.filter(note => note.category === currentCategory);
+        notesToDisplay.sort((a, b) => b.timestamp - a.timestamp);
+        let currentTotalWords = 0;
+        if (notesToDisplay.length === 0) {
+          noNotesMessageElement.style.display = 'block';
+        } else {
+          noNotesMessageElement.style.display = 'none';
+          notesToDisplay.forEach(note => {
+            const noteElement = document.createElement('div');
+            noteElement.className = 'p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer';
+            noteElement.setAttribute('aria-label', `Note: ${note.title}`);
+            const titleEl = document.createElement('h3');
+            titleEl.className = 'text-md font-semibold text-[#0d141c] mb-1 truncate';
+            titleEl.textContent = note.title;
+            const categoryEl = document.createElement('p');
+            categoryEl.className = 'text-xs text-slate-500 mb-1';
+            categoryEl.textContent = `Category: ${note.category}`;
+            const contentPreviewEl = document.createElement('p');
+            contentPreviewEl.className = 'text-sm text-slate-700 mb-2 line-clamp-3';
+            contentPreviewEl.textContent = note.content;
+            const dateEl = document.createElement('p');
+            dateEl.className = 'text-xs text-slate-400 mb-1';
+            dateEl.textContent = new Date(note.timestamp).toLocaleString();
+            const wordCountEl = document.createElement('p');
+            wordCountEl.className = 'text-xs text-[#0c7ff2] font-medium';
+            wordCountEl.textContent = `Words: ${note.wordCount}`;
+            noteElement.append(titleEl, categoryEl, contentPreviewEl, dateEl, wordCountEl);
+            pastNotesListElement.appendChild(noteElement);
+            currentTotalWords += note.wordCount;
+          });
+        }
+        totalWordCountElement.textContent = `Total words: ${currentTotalWords}`;
+      }
+
+      function loadNotesFromStorage() {
+        const notesJson = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (notesJson) {
+          try {
+            savedNotes = JSON.parse(notesJson);
+          } catch (e) {
+            console.error("Error parsing saved notes from localStorage:", e);
+            savedNotes = [];
+          }
+        }
+        renderPastNotes();
+      }
+
+      function saveNotesToStorage() {
+        try {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedNotes));
+        } catch (e) {
+          console.error("Error saving notes to localStorage:", e);
+          updateStatus("Error saving note to local storage. Storage might be full.", true);
+        }
+      }
+
+      async function generateTitleWithGemini(content) {
+        if (!content || content.trim() === '') {
+          return "Untitled Note";
+        }
+        updateStatus('Generating title...');
+        try {
+          const prompt = `Based on the following text, generate a concise and descriptive title, ideally between 3 to 7 words. The title should capture the main topic or essence of the text. Text:\n\n${content}`;
+          const response = await genAI.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+          });
+          const generatedTitle = response.text;
+          if (generatedTitle && generatedTitle.trim() !== '') {
+            currentPolishedTitle = generatedTitle.trim();
+            return currentPolishedTitle;
+          } else {
+            updateStatus('Title generation returned empty, using fallback.', true);
+            currentPolishedTitle = localGenerateTitle(content);
+            return currentPolishedTitle;
+          }
+        } catch (error) {
+          console.error('Error generating title with Gemini:', error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          updateStatus(`Title generation error: ${errorMessage}. Using fallback.`, true);
+          currentPolishedTitle = localGenerateTitle(content);
+          return currentPolishedTitle;
+        }
+      }
+
+      async function saveCurrentPolishedNoteToLocal() {
+          if (!currentPolishedText || currentPolishedText.trim() === '') {
+              updateStatus("No content to save locally.", true);
+              return;
+          }
+          if (!currentPolishedTitle || currentPolishedTitle === INITIAL_TITLE) {
+              currentPolishedTitle = await generateTitleWithGemini(currentPolishedText);
+          }
+          updateStatus('Saving note locally...');
+          const newNote = {
+              id: generateId(),
+              title: currentPolishedTitle,
+              content: currentPolishedText,
+              category: currentCategory,
+              timestamp: Date.now(),
+              wordCount: countWords(currentPolishedText),
+          };
+          savedNotes.push(newNote);
+          saveNotesToStorage();
+          renderPastNotes();
+          updateStatus(`Note "${currentPolishedTitle}" saved to "${currentCategory}" locally!`);
+          displayCurrentPolishedNote(currentPolishedText, currentPolishedTitle);
+      }
+
+      async function getTranscription(base64Audio, mimeType) {
+        updateStatus('Transcribing audio...');
+        try {
+          const audioPart = { inlineData: { mimeType: mimeType, data: base64Audio } };
+          const textPart = { text: 'Generate a complete, detailed transcript of this audio.' };
+          const response = await genAI.models.generateContent({
+            model: MODEL_NAME,
+            contents: { parts: [textPart, audioPart] },
+          });
+          const transcriptionText = response.text;
+          if (transcriptionText && transcriptionText.trim() !== '') {
+            await getPolishedNote(transcriptionText);
+          } else {
+            updateStatus('Transcription failed or returned empty. Please try again.', true);
+            displayCurrentPolishedNote('Could not transcribe audio. Please try again.');
+            resetToReadyState('Transcription failed.');
+          }
+        } catch (error) {
+          console.error('Error getting transcription:', error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          updateStatus(`Transcription error: ${errorMessage}. Please try again.`, true);
+          displayCurrentPolishedNote(`Error during transcription: ${errorMessage}`);
+          resetToReadyState('Transcription error.');
+        }
+      }
+
+      async function getPolishedNote(rawTranscription) {
+        updateStatus('Polishing note...');
+        try {
+          const prompt = `Take this raw transcription and create a polished, well-formatted note.
+                          Remove filler words (um, uh, like), repetitions, and false starts.
+                          Organize the content logically. If there are lists or distinct points, format them clearly.
+                          Ensure the core meaning and all significant information from the raw transcription are preserved.
+                          The output should be suitable for direct reading as a coherent note.
+
+                          Raw transcription:
+                          ${rawTranscription}`;
+          const response = await genAI.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+          });
+          const polishedText = response.text;
+          if (polishedText) {
+            currentPolishedTitle = await generateTitleWithGemini(polishedText);
+            displayCurrentPolishedNote(polishedText, currentPolishedTitle);
+            await saveCurrentPolishedNoteToLocal();
+          } else {
+            updateStatus('Polishing failed or returned empty. Displaying raw transcription.', true);
+            displayCurrentPolishedNote(`Polishing failed. Raw content:\n${rawTranscription}`);
+          }
+        } catch (error) {
+          console.error('Error polishing note:', error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          updateStatus(`Error polishing note: ${errorMessage}. Displaying raw transcription.`, true);
+          displayCurrentPolishedNote(`Error during polishing. Raw content:\n${rawTranscription}\n\nError: ${errorMessage}`);
+        } finally {
+          if (statusMessageElement && !statusMessageElement.textContent?.includes("saved") && !statusMessageElement.textContent?.includes("error")) {
+              resetToReadyState('Ready for new dictation.');
+          } else {
+              resetToReadyState(statusMessageElement.textContent || 'Ready for new dictation.');
+          }
+        }
+      }
+
+      function handleMediaRecorderStop() {
+          if (audioChunks.length === 0) {
+              updateStatus('No audio data captured. Please try again.', true);
+              resetToReadyState('No audio captured.');
+              return;
+          }
+          updateButtonState(PROCESSING_BUTTON_TEXT, true);
+          updateStatus('Processing audio...');
+          updateSaveToDriveButton('Processing...', true);
+          const mimeType = mediaRecorder?.mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          audioChunks = [];
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+              try {
+                  const base64data = reader.result;
+                  const base64Audio = base64data.split(',')[1];
+                  if (!base64Audio) throw new Error('Failed to convert audio to base64');
+                  await getTranscription(base64Audio, mimeType);
+              } catch (err) {
+                  console.error('Error processing audio blob:', err);
+                  const errorMessage = err instanceof Error ? err.message : String(err);
+                  updateStatus(`Error processing audio: ${errorMessage}`, true);
+                  displayCurrentPolishedNote(`Error processing audio: ${errorMessage}`);
+                  resetToReadyState('Audio processing error.');
+              }
+          };
+          reader.onerror = () => {
+              console.error('FileReader error:', reader.error);
+              updateStatus(`FileReader error: ${reader.error?.message || 'Unknown error'}`, true);
+              displayCurrentPolishedNote(`Error reading audio data: ${reader.error?.message || 'Unknown error'}`);
+              resetToReadyState('Audio reading error.');
+          };
+          reader.readAsDataURL(audioBlob);
+      }
+
+      async function startRecording() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          updateStatus('getUserMedia not supported on your browser!', true);
+          return;
+        }
+        updateButtonState(STOP_BUTTON_TEXT, false);
+        updateStatus('Requesting microphone access...');
+        updateSaveToDriveButton('Save to Google Drive', true);
+        displayCurrentPolishedNote('', 'New Dictation');
+        try {
+          currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          updateStatus('Microphone access granted. Recording...');
+          isRecording = true;
+          audioChunks = [];
+          const options = { mimeType: 'audio/webm' };
+          if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+              console.warn(`${options.mimeType} is not Supported. Using default.`);
+              mediaRecorder = new MediaRecorder(currentStream);
+          } else {
+              mediaRecorder = new MediaRecorder(currentStream, options);
+          }
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              audioChunks.push(event.data);
+            }
+          };
+          mediaRecorder.onstop = handleMediaRecorderStop;
+          mediaRecorder.onerror = (event) => {
+              console.error('MediaRecorder error:', event);
+              const mediaRecorderError = event; // ErrorEvent
+              const errorName = mediaRecorderError.error?.name || 'Unknown MediaRecorderError';
+              updateStatus(`Recording error: ${errorName}`, true);
+              resetToReadyState('Recording error.');
+          };
+          mediaRecorder.start();
+        } catch (err) {
+          console.error('Error starting recording:', err);
+          const error = err; // Error
+          let message = `Error starting recording: ${error.message}.`;
+          if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            message = 'Microphone permission denied. Please allow access in your browser settings.';
+          } else if (error.name === 'NotFoundError') {
+            message = 'No microphone found. Please connect a microphone.';
+          }
+          updateStatus(message, true);
+          resetToReadyState('Could not start recording.');
+        }
+      }
+
+      async function stopRecording() {
+        if (mediaRecorder && isRecording) {
+          mediaRecorder.stop();
+          isRecording = false;
+          updateStatus('Stopping recording...');
+          if (currentStream) {
+              currentStream.getTracks().forEach(track => track.stop());
+              currentStream = null;
+          }
+        }
+      }
+
+      async function toggleRecording() {
+        if (!dictationButton) return;
+        if (isRecording) {
+          await stopRecording();
+        } else {
+          await startRecording();
+        }
+      }
+
+      function handleCategoryTabClick(event) {
+          const clickedTab = event.currentTarget;
+          const category = clickedTab.dataset.category;
+          if (category && category !== currentCategory) {
+              currentCategory = category;
+              setActiveTab();
+              renderPastNotes();
+              updateStatus(`Viewing ${category} notes.`);
+          }
+      }
+
+      function gapiLoadedCallback() {
+          gapi.load('client:picker', initializePickerApi);
+          gapiLoaded = true;
+      }
+
+      function gisLoadedCallback() {
+          if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+              // This specific check is handled by the alert in initApp and the checkDriveApiReady updates status
+              // updateStatus('Google Client ID not configured for Drive saving.', true);
+              console.error('Google Client ID not configured (gisLoadedCallback).');
+              // updateSaveToDriveButton('Drive N/A: Setup ID', true);
+              // return; // Don't return here, let checkDriveApiReady handle UI
+          }
+          googleTokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: GOOGLE_CLIENT_ID,
+              scope: DRIVE_SCOPES,
+              callback: handleGoogleTokenResponse,
+          });
+          gisLoaded = true;
+          checkDriveApiReady();
+      }
+
+      function initializePickerApi() {
+          if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
+              // This specific check is handled by the alert in initApp and the checkDriveApiReady updates status
+              // updateStatus('Google API Key not configured for Drive Picker.', true);
+              console.error('Google API Key not configured (initializePickerApi).');
+              // updateSaveToDriveButton('Drive N/A: Setup Key', true);
+              // return; // Don't return here, let checkDriveApiReady handle UI
+          }
+          pickerApiLoaded = true;
+          checkDriveApiReady();
+      }
+
+      function checkDriveApiReady() {
+          const geminiKeyOk = GEMINI_API_KEY && GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE';
+          const googleApiKeyOk = GOOGLE_API_KEY && GOOGLE_API_KEY !== 'YOUR_GOOGLE_API_KEY_HERE';
+          const googleClientIdOk = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+
+          if (!geminiKeyOk) {
+             // Already handled by initApp alert and status update
+          }
+
+          if (googleApiKeyOk && googleClientIdOk) {
+              if (gapiLoaded && gisLoaded && pickerApiLoaded && googleTokenClient) {
+                  updateStatus("Google Drive integration ready.");
+                  if (currentPolishedText && currentPolishedText.trim() !== '') {
+                       updateSaveToDriveButton('Save to Google Drive', false);
+                  } else {
+                       updateSaveToDriveButton('Save to Google Drive', true);
+                  }
+              } else {
+                  updateSaveToDriveButton('Loading Drive...', true);
+              }
+          } else {
+              let missing = [];
+              if (!googleApiKeyOk) missing.push("Google API Key");
+              if (!googleClientIdOk) missing.push("Google Client ID");
+              updateStatus(`Configure ${missing.join(' & ')} for Google Drive.`, true);
+              updateSaveToDriveButton('Drive: Needs Config', true);
+          }
+      }
+
+      async function handleSaveToDriveClick() {
+          if (!currentPolishedText || currentPolishedText.trim() === '') {
+              updateStatus("No content to save to Drive.", true);
+              return;
+          }
+          if (!pickerApiLoaded || !googleTokenClient) {
+              updateStatus("Google Drive integration is not ready. Check API Key/Client ID.", true);
+              return;
+          }
+          updateSaveToDriveButton('Authenticating...', true);
+          updateStatus('Authenticating with Google...');
+          if (googleAccessToken && googleAccessToken.expires_in > 60) {
+              createPicker();
+          } else {
+              googleTokenClient.requestAccessToken({ prompt: '' });
+          }
+      }
+
+      function handleGoogleTokenResponse(response) {
+          if (response.error) {
+              console.error('Google OAuth Error:', response.error, response.error_description);
+              updateStatus(`Google Auth Error: ${response.error_description || response.error}`, true);
+              updateSaveToDriveButton('Save to Google Drive', false);
+              googleAccessToken = null;
+              return;
+          }
+          googleAccessToken = response;
+          updateStatus('Authenticated with Google. Opening Drive Picker...');
+          createPicker();
+      }
+
+      function createPicker() {
+          if (!googleAccessToken || !pickerApiLoaded) {
+              updateStatus("Cannot open Drive Picker: Not authenticated or Picker API not loaded.", true);
+              updateSaveToDriveButton('Save to Google Drive', false);
+              return;
+          }
+          updateStatus('Opening Google Drive Picker...');
+          const view = new google.picker.View(google.picker.ViewId.DOCS);
+          view.setMimeTypes("application/vnd.google-apps.folder");
+          const picker = new google.picker.PickerBuilder()
+              .enableFeature(google.picker.Feature.NAV_HIDDEN)
+              .setAppId(GOOGLE_CLIENT_ID.split('.')[0])
+              .setOAuthToken(googleAccessToken.access_token)
+              .addView(view)
+              .addView(new google.picker.DocsUploadView().setIncludeFolders(true))
+              .setDeveloperKey(GOOGLE_API_KEY)
+              .setCallback(pickerCallback)
+              .setTitle('Select Folder to Save Note')
+              .build();
+          picker.setVisible(true);
+          updateSaveToDriveButton('Picker Open...', true);
+      }
+
+      async function pickerCallback(data) {
+          if (data[google.picker.Response.ACTION] == google.picker.Action.PICKED) {
+              const doc = data[google.picker.Response.DOCUMENTS][0];
+              const folderId = doc[google.picker.Document.ID];
+              const fileName = currentPolishedTitle ? `${currentPolishedTitle}.txt` : "Untitled Dictation.txt";
+              updateStatus(`Selected folder. Saving "${fileName}" to Google Drive...`);
+              updateSaveToDriveButton('Saving to Drive...', true);
+              await uploadFileToDrive(folderId, fileName, currentPolishedText || "");
+          } else if (data[google.picker.Response.ACTION] == google.picker.Action.CANCEL) {
+              updateStatus("Google Drive save cancelled.");
+              updateSaveToDriveButton('Save to Google Drive', false);
+          } else {
+              updateStatus("Google Drive Picker closed.");
+              updateSaveToDriveButton('Save to Google Drive', false);
+          }
+      }
+
+      async function uploadFileToDrive(folderId, fileName, fileContent) {
+          try {
+              await gapi.client.load('drive', 'v3');
+              const metadata = {
+                  name: fileName,
+                  mimeType: 'text/plain',
+                  parents: [folderId]
+              };
+              const boundary = '-------314159265358979323846';
+              const delimiter = "\r\n--" + boundary + "\r\n";
+              const close_delim = "\r\n--" + boundary + "--";
+              const multipartRequestBody =
+                  delimiter +
+                  'Content-Type: application/json\r\n\r\n' +
+                  JSON.stringify(metadata) +
+                  delimiter +
+                  'Content-Type: text/plain\r\n\r\n' +
+                  fileContent +
+                  close_delim;
+              const request = gapi.client.request({
+                  path: '/upload/drive/v3/files',
+                  method: 'POST',
+                  params: { uploadType: 'multipart' },
+                  headers: {
+                      'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+                  },
+                  body: multipartRequestBody
+              });
+              await new Promise((resolve, reject) => {
+                  request.execute((file, err) => {
+                      if (err) {
+                          console.error('Error saving to Drive:', err);
+                          reject(err);
+                      } else {
+                          console.log('File saved to Drive:', file);
+                          resolve(file);
+                      }
+                  });
+              });
+              updateStatus(`"${fileName}" successfully saved to Google Drive!`, false);
+          } catch (error) {
+              console.error('Error uploading file to Drive:', error);
+              const err = error; // Error
+              updateStatus(`Error saving to Drive: ${err.result?.error?.message || err.message || 'Unknown error'}`, true);
+          } finally {
+              updateSaveToDriveButton('Save to Google Drive', false);
+          }
+      }
+
+      function initApp() {
+        // --- VERY IMPORTANT: API KEY CHECKS ---
+        // These alerts will show if you haven't replaced the placeholder API keys.
+        let criticalConfigError = false;
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+            alert("CRITICAL ERROR: Gemini API Key is not configured!\n\nPlease edit the index.html file and replace 'YOUR_GEMINI_API_KEY_HERE' with your actual Gemini API Key. Transcription and note polishing will NOT work.");
+            criticalConfigError = true;
+        }
+        if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
+             alert("CONFIGURATION NOTICE: Google API Key (for Drive Picker) is not configured.\n\nPlease edit the index.html file and replace 'YOUR_GOOGLE_API_KEY_HERE' with your actual Google API Key if you want to use Google Drive features.");
+             // This is not strictly critical for core dictation, so don't set criticalConfigError = true
+        }
+        if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+             alert("CONFIGURATION NOTICE: Google Client ID (for Drive Auth) is not configured.\n\nPlease edit the index.html file and replace 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com' with your actual Google OAuth 2.0 Client ID if you want to use Google Drive features.");
+             // This is not strictly critical for core dictation
+        }
+
+        dictationButton = document.getElementById('dictationButton');
+        dictationButtonText = document.getElementById('dictationButtonText');
+        polishedDictationTitleElement = document.getElementById('polishedDictationTitle');
+        polishedDictationContentElement = document.getElementById('polishedDictationContent');
+        statusMessageElement = document.getElementById('statusMessage');
+        categoryTabs = document.querySelectorAll('.category-tab');
+        pastNotesListElement = document.getElementById('pastNotesList');
+        noNotesMessageElement = document.getElementById('noNotesMessage');
+        totalWordCountElement = document.getElementById('totalWordCount');
+        saveToDriveButton = document.getElementById('saveToDriveButton');
+        saveToDriveButtonText = document.getElementById('saveToDriveButtonText');
+
+        window.gapiLoadedCallback = gapiLoadedCallback;
+        window.gisLoadedCallback = gisLoadedCallback;
+
+        const gapiScript = document.querySelector('script[src="https://apis.google.com/js/api.js"]');
+        if (gapiScript) gapiScript.setAttribute('onload', 'gapiLoadedCallback()');
+
+        const gisScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+        if (gisScript) gisScript.setAttribute('onload', 'gisLoadedCallback()');
+
+        if (criticalConfigError) {
+          updateStatus('CRITICAL: Gemini API Key not configured. App will not function correctly.', true);
+          if (dictationButton) dictationButton.disabled = true;
+          console.error('CRITICAL: Gemini API Key not configured.');
+          displayCurrentPolishedNote('Application is not configured correctly. MISSING GEMINI API KEY.');
+        } else {
+          genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+          updateStatus("Gemini API Key loaded.", false); // Initial ready status
+        }
+
+        if (dictationButton) {
+          dictationButton.addEventListener('click', toggleRecording);
+        }
+        if (saveToDriveButton) {
+          saveToDriveButton.addEventListener('click', handleSaveToDriveClick);
+        }
+
+        categoryTabs.forEach(tab => tab.addEventListener('click', handleCategoryTabClick));
+
+        loadNotesFromStorage();
+        setActiveTab();
+        displayCurrentPolishedNote(PLACEHOLDER_TEXT);
+        resetToReadyState(criticalConfigError ? 'App disabled due to missing Gemini Key.' : 'Ready to dictate.'); // Initial status
+        checkDriveApiReady(); // This will update status related to Drive keys
+
+        if (currentCategory !== 'Diary' && !criticalConfigError) { // Avoid error if savedNotes is empty due to no Gemini
+          renderPastNotes();
+        }
+      }
+      document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+  </body>
+</html>
