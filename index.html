@@ -101,8 +101,7 @@
 
       // 2. Google API Key (for Google Picker and Drive API features)
       //    Get this from Google Cloud Console.
-      const GOOGLE_API_KEY = 'AIzaSyBiF93RRqjCRTqm3aaPyLXmt4kx2cRh8jM
-'; // <--- REPLACE THIS!
+      const GOOGLE_API_KEY = 'AIzaSyBiF93RRqjCRTqm3aaPyLXmt4kx2cRh8jM'; // <--- REPLACE THIS!
 
       // 3. Google OAuth 2.0 Client ID (for Google Drive authentication)
       //    Get this from Google Cloud Console (Web application type).
@@ -174,9 +173,9 @@
       function updateStatus(message, isError = false) {
         if (statusMessageElement) {
           statusMessageElement.textContent = message;
-          statusMessageElement.className = `text-sm text-center py-1 px-4 ${
+          statusMessageElement.className = \`text-sm text-center py-1 px-4 \${
             isError ? 'text-red-600 font-semibold' : 'text-slate-600'
-          }`;
+          }\`;
         }
       }
 
@@ -262,13 +261,13 @@
           notesToDisplay.forEach(note => {
             const noteElement = document.createElement('div');
             noteElement.className = 'p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer';
-            noteElement.setAttribute('aria-label', `Note: ${note.title}`);
+            noteElement.setAttribute('aria-label', \`Note: \${note.title}\`);
             const titleEl = document.createElement('h3');
             titleEl.className = 'text-md font-semibold text-[#0d141c] mb-1 truncate';
             titleEl.textContent = note.title;
             const categoryEl = document.createElement('p');
             categoryEl.className = 'text-xs text-slate-500 mb-1';
-            categoryEl.textContent = `Category: ${note.category}`;
+            categoryEl.textContent = \`Category: \${note.category}\`;
             const contentPreviewEl = document.createElement('p');
             contentPreviewEl.className = 'text-sm text-slate-700 mb-2 line-clamp-3';
             contentPreviewEl.textContent = note.content;
@@ -277,13 +276,13 @@
             dateEl.textContent = new Date(note.timestamp).toLocaleString();
             const wordCountEl = document.createElement('p');
             wordCountEl.className = 'text-xs text-[#0c7ff2] font-medium';
-            wordCountEl.textContent = `Words: ${note.wordCount}`;
+            wordCountEl.textContent = \`Words: \${note.wordCount}\`;
             noteElement.append(titleEl, categoryEl, contentPreviewEl, dateEl, wordCountEl);
             pastNotesListElement.appendChild(noteElement);
             currentTotalWords += note.wordCount;
           });
         }
-        totalWordCountElement.textContent = `Total words: ${currentTotalWords}`;
+        totalWordCountElement.textContent = \`Total words: \${currentTotalWords}\`;
       }
 
       function loadNotesFromStorage() {
@@ -314,7 +313,7 @@
         }
         updateStatus('Generating title...');
         try {
-          const prompt = `Based on the following text, generate a concise and descriptive title, ideally between 3 to 7 words. The title should capture the main topic or essence of the text. Text:\n\n${content}`;
+          const prompt = \`Based on the following text, generate a concise and descriptive title, ideally between 3 to 7 words. The title should capture the main topic or essence of the text. Text:\\n\\n\${content}\`;
           const response = await genAI.models.generateContent({
             model: MODEL_NAME,
             contents: prompt,
@@ -331,7 +330,7 @@
         } catch (error) {
           console.error('Error generating title with Gemini:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
-          updateStatus(`Title generation error: ${errorMessage}. Using fallback.`, true);
+          updateStatus(\`Title generation error: \${errorMessage}. Using fallback.\`, true);
           currentPolishedTitle = localGenerateTitle(content);
           return currentPolishedTitle;
         }
@@ -357,7 +356,7 @@
           savedNotes.push(newNote);
           saveNotesToStorage();
           renderPastNotes();
-          updateStatus(`Note "${currentPolishedTitle}" saved to "${currentCategory}" locally!`);
+          updateStatus(\`Note "\${currentPolishedTitle}" saved to "\${currentCategory}" locally!\`);
           displayCurrentPolishedNote(currentPolishedText, currentPolishedTitle);
       }
 
@@ -381,8 +380,8 @@
         } catch (error) {
           console.error('Error getting transcription:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
-          updateStatus(`Transcription error: ${errorMessage}. Please try again.`, true);
-          displayCurrentPolishedNote(`Error during transcription: ${errorMessage}`);
+          updateStatus(\`Transcription error: \${errorMessage}. Please try again.\`, true);
+          displayCurrentPolishedNote(\`Error during transcription: \${errorMessage}\`);
           resetToReadyState('Transcription error.');
         }
       }
@@ -390,14 +389,14 @@
       async function getPolishedNote(rawTranscription) {
         updateStatus('Polishing note...');
         try {
-          const prompt = `Take this raw transcription and create a polished, well-formatted note.
+          const prompt = \`Take this raw transcription and create a polished, well-formatted note.
                           Remove filler words (um, uh, like), repetitions, and false starts.
                           Organize the content logically. If there are lists or distinct points, format them clearly.
                           Ensure the core meaning and all significant information from the raw transcription are preserved.
                           The output should be suitable for direct reading as a coherent note.
 
                           Raw transcription:
-                          ${rawTranscription}`;
+                          \${rawTranscription}\`;
           const response = await genAI.models.generateContent({
             model: MODEL_NAME,
             contents: prompt,
@@ -409,13 +408,13 @@
             await saveCurrentPolishedNoteToLocal();
           } else {
             updateStatus('Polishing failed or returned empty. Displaying raw transcription.', true);
-            displayCurrentPolishedNote(`Polishing failed. Raw content:\n${rawTranscription}`);
+            displayCurrentPolishedNote(\`Polishing failed. Raw content:\\n\${rawTranscription}\`);
           }
         } catch (error) {
           console.error('Error polishing note:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
-          updateStatus(`Error polishing note: ${errorMessage}. Displaying raw transcription.`, true);
-          displayCurrentPolishedNote(`Error during polishing. Raw content:\n${rawTranscription}\n\nError: ${errorMessage}`);
+          updateStatus(\`Error polishing note: \${errorMessage}. Displaying raw transcription.\`, true);
+          displayCurrentPolishedNote(\`Error during polishing. Raw content:\\n\${rawTranscription}\\n\\nError: \${errorMessage}\`);
         } finally {
           if (statusMessageElement && !statusMessageElement.textContent?.includes("saved") && !statusMessageElement.textContent?.includes("error")) {
               resetToReadyState('Ready for new dictation.');
@@ -447,15 +446,15 @@
               } catch (err) {
                   console.error('Error processing audio blob:', err);
                   const errorMessage = err instanceof Error ? err.message : String(err);
-                  updateStatus(`Error processing audio: ${errorMessage}`, true);
-                  displayCurrentPolishedNote(`Error processing audio: ${errorMessage}`);
+                  updateStatus(\`Error processing audio: \${errorMessage}\`, true);
+                  displayCurrentPolishedNote(\`Error processing audio: \${errorMessage}\`);
                   resetToReadyState('Audio processing error.');
               }
           };
           reader.onerror = () => {
               console.error('FileReader error:', reader.error);
-              updateStatus(`FileReader error: ${reader.error?.message || 'Unknown error'}`, true);
-              displayCurrentPolishedNote(`Error reading audio data: ${reader.error?.message || 'Unknown error'}`);
+              updateStatus(\`FileReader error: \${reader.error?.message || 'Unknown error'}\`, true);
+              displayCurrentPolishedNote(\`Error reading audio data: \${reader.error?.message || 'Unknown error'}\`);
               resetToReadyState('Audio reading error.');
           };
           reader.readAsDataURL(audioBlob);
@@ -477,7 +476,7 @@
           audioChunks = [];
           const options = { mimeType: 'audio/webm' };
           if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-              console.warn(`${options.mimeType} is not Supported. Using default.`);
+              console.warn(\`\${options.mimeType} is not Supported. Using default.\`);
               mediaRecorder = new MediaRecorder(currentStream);
           } else {
               mediaRecorder = new MediaRecorder(currentStream, options);
@@ -488,21 +487,19 @@
             }
           };
           mediaRecorder.onstop = handleMediaRecorderStop;
-          mediaRecorder.onerror = (event) => {
+          mediaRecorder.onerror = (event) => { // event is implicitly Event, but can be ErrorEvent
               console.error('MediaRecorder error:', event);
-              const mediaRecorderError = event; // ErrorEvent
-              const errorName = mediaRecorderError.error?.name || 'Unknown MediaRecorderError';
-              updateStatus(`Recording error: ${errorName}`, true);
+              const errorName = event.error?.name || 'Unknown MediaRecorderError'; // Access .error if it exists
+              updateStatus(\`Recording error: \${errorName}\`, true);
               resetToReadyState('Recording error.');
           };
           mediaRecorder.start();
         } catch (err) {
           console.error('Error starting recording:', err);
-          const error = err; // Error
-          let message = `Error starting recording: ${error.message}.`;
-          if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          let message = \`Error starting recording: \${err.message}.\`;
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
             message = 'Microphone permission denied. Please allow access in your browser settings.';
-          } else if (error.name === 'NotFoundError') {
+          } else if (err.name === 'NotFoundError') {
             message = 'No microphone found. Please connect a microphone.';
           }
           updateStatus(message, true);
@@ -538,27 +535,27 @@
               currentCategory = category;
               setActiveTab();
               renderPastNotes();
-              updateStatus(`Viewing ${category} notes.`);
+              updateStatus(\`Viewing \${category} notes.\`);
           }
       }
 
-      function gapiLoadedCallback() {
+      // Google API Integration
+      // These functions will be called by the onload attributes of the Google API script tags
+      // So they need to be available in the global scope.
+      window.gapiLoadedCallback = function() {
           gapi.load('client:picker', initializePickerApi);
           gapiLoaded = true;
       }
 
-      function gisLoadedCallback() {
+      window.gisLoadedCallback = function() {
           if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-              // This specific check is handled by the alert in initApp and the checkDriveApiReady updates status
-              // updateStatus('Google Client ID not configured for Drive saving.', true);
               console.error('Google Client ID not configured (gisLoadedCallback).');
-              // updateSaveToDriveButton('Drive N/A: Setup ID', true);
-              // return; // Don't return here, let checkDriveApiReady handle UI
+              // UI update handled by checkDriveApiReady
           }
           googleTokenClient = google.accounts.oauth2.initTokenClient({
               client_id: GOOGLE_CLIENT_ID,
               scope: DRIVE_SCOPES,
-              callback: handleGoogleTokenResponse,
+              callback: handleGoogleTokenResponse, // No need to bind 'this'
           });
           gisLoaded = true;
           checkDriveApiReady();
@@ -566,11 +563,8 @@
 
       function initializePickerApi() {
           if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
-              // This specific check is handled by the alert in initApp and the checkDriveApiReady updates status
-              // updateStatus('Google API Key not configured for Drive Picker.', true);
               console.error('Google API Key not configured (initializePickerApi).');
-              // updateSaveToDriveButton('Drive N/A: Setup Key', true);
-              // return; // Don't return here, let checkDriveApiReady handle UI
+               // UI update handled by checkDriveApiReady
           }
           pickerApiLoaded = true;
           checkDriveApiReady();
@@ -583,6 +577,7 @@
 
           if (!geminiKeyOk) {
              // Already handled by initApp alert and status update
+             return; // Further Drive checks are irrelevant if core app won't work
           }
 
           if (googleApiKeyOk && googleClientIdOk) {
@@ -594,16 +589,21 @@
                        updateSaveToDriveButton('Save to Google Drive', true);
                   }
               } else {
+                  // This state implies that scripts are still loading or one of them failed to load correctly
+                  // but keys themselves are provided.
+                  updateStatus("Loading Google Drive components...", false);
                   updateSaveToDriveButton('Loading Drive...', true);
               }
           } else {
               let missing = [];
               if (!googleApiKeyOk) missing.push("Google API Key");
               if (!googleClientIdOk) missing.push("Google Client ID");
-              updateStatus(`Configure ${missing.join(' & ')} for Google Drive.`, true);
+              // updateStatus is already handled by initApp's alerts for these specific placeholders
+              // updateStatus(\`Configure \${missing.join(' & ')} for Google Drive.\`, true);
               updateSaveToDriveButton('Drive: Needs Config', true);
           }
       }
+
 
       async function handleSaveToDriveClick() {
           if (!currentPolishedText || currentPolishedText.trim() === '') {
@@ -611,23 +611,23 @@
               return;
           }
           if (!pickerApiLoaded || !googleTokenClient) {
-              updateStatus("Google Drive integration is not ready. Check API Key/Client ID.", true);
+              updateStatus("Google Drive integration is not ready. Check API Key/Client ID or wait for loading.", true);
               return;
           }
           updateSaveToDriveButton('Authenticating...', true);
           updateStatus('Authenticating with Google...');
-          if (googleAccessToken && googleAccessToken.expires_in > 60) {
+          if (googleAccessToken && googleAccessToken.expires_in > 60) { // Check if current token is still valid
               createPicker();
           } else {
-              googleTokenClient.requestAccessToken({ prompt: '' });
+              googleTokenClient.requestAccessToken({ prompt: '' }); // Request new or refreshed token
           }
       }
 
       function handleGoogleTokenResponse(response) {
           if (response.error) {
               console.error('Google OAuth Error:', response.error, response.error_description);
-              updateStatus(`Google Auth Error: ${response.error_description || response.error}`, true);
-              updateSaveToDriveButton('Save to Google Drive', false);
+              updateStatus(\`Google Auth Error: \${response.error_description || response.error}\`, true);
+              updateSaveToDriveButton('Save to Google Drive', false); // Re-enable button to allow retry
               googleAccessToken = null;
               return;
           }
@@ -643,34 +643,39 @@
               return;
           }
           updateStatus('Opening Google Drive Picker...');
-          const view = new google.picker.View(google.picker.ViewId.DOCS);
-          view.setMimeTypes("application/vnd.google-apps.folder");
+          // Note: google.picker.ViewId.DOCS is used to show folders primarily.
+          // For allowing folder selection, a DocsUploadView with setIncludeFolders(true) is better.
+          const docsView = new google.picker.View(google.picker.ViewId.DOCS);
+          docsView.setMimeTypes("application/vnd.google-apps.folder");
+
+
           const picker = new google.picker.PickerBuilder()
               .enableFeature(google.picker.Feature.NAV_HIDDEN)
-              .setAppId(GOOGLE_CLIENT_ID.split('.')[0])
+              .setAppId(GOOGLE_CLIENT_ID.split('.')[0]) // AppId is usually the numeric part of client ID
               .setOAuthToken(googleAccessToken.access_token)
-              .addView(view)
-              .addView(new google.picker.DocsUploadView().setIncludeFolders(true))
+              .addView(docsView) // View for selecting existing folders
+              // .addView(new google.picker.DocsUploadView().setIncludeFolders(true)) // This allows creating new folders too if needed
               .setDeveloperKey(GOOGLE_API_KEY)
               .setCallback(pickerCallback)
               .setTitle('Select Folder to Save Note')
               .build();
           picker.setVisible(true);
-          updateSaveToDriveButton('Picker Open...', true);
+          updateSaveToDriveButton('Picker Open...', true); // Button disabled while picker is open
       }
 
       async function pickerCallback(data) {
           if (data[google.picker.Response.ACTION] == google.picker.Action.PICKED) {
               const doc = data[google.picker.Response.DOCUMENTS][0];
               const folderId = doc[google.picker.Document.ID];
-              const fileName = currentPolishedTitle ? `${currentPolishedTitle}.txt` : "Untitled Dictation.txt";
-              updateStatus(`Selected folder. Saving "${fileName}" to Google Drive...`);
+              const fileName = currentPolishedTitle ? \`\${currentPolishedTitle}.txt\` : "Untitled Dictation.txt";
+              updateStatus(\`Selected folder. Saving "\${fileName}" to Google Drive...\`);
               updateSaveToDriveButton('Saving to Drive...', true);
               await uploadFileToDrive(folderId, fileName, currentPolishedText || "");
           } else if (data[google.picker.Response.ACTION] == google.picker.Action.CANCEL) {
               updateStatus("Google Drive save cancelled.");
               updateSaveToDriveButton('Save to Google Drive', false);
           } else {
+              // Handles cases like closing the picker by pressing Esc or clicking outside
               updateStatus("Google Drive Picker closed.");
               updateSaveToDriveButton('Save to Google Drive', false);
           }
@@ -678,23 +683,26 @@
 
       async function uploadFileToDrive(folderId, fileName, fileContent) {
           try {
-              await gapi.client.load('drive', 'v3');
+              await gapi.client.load('drive', 'v3'); // Ensure Drive client is loaded
+
               const metadata = {
                   name: fileName,
                   mimeType: 'text/plain',
                   parents: [folderId]
               };
               const boundary = '-------314159265358979323846';
-              const delimiter = "\r\n--" + boundary + "\r\n";
-              const close_delim = "\r\n--" + boundary + "--";
+              const delimiter = "\\r\\n--" + boundary + "\\r\\n";
+              const close_delim = "\\r\\n--" + boundary + "--";
+
               const multipartRequestBody =
                   delimiter +
-                  'Content-Type: application/json\r\n\r\n' +
+                  'Content-Type: application/json\\r\\n\\r\\n' +
                   JSON.stringify(metadata) +
                   delimiter +
-                  'Content-Type: text/plain\r\n\r\n' +
+                  'Content-Type: text/plain\\r\\n\\r\\n' +
                   fileContent +
                   close_delim;
+
               const request = gapi.client.request({
                   path: '/upload/drive/v3/files',
                   method: 'POST',
@@ -704,6 +712,9 @@
                   },
                   body: multipartRequestBody
               });
+
+              // gapi.client.request returns an object with an 'execute' method
+              // that takes a callback, not a Promise directly.
               await new Promise((resolve, reject) => {
                   request.execute((file, err) => {
                       if (err) {
@@ -715,19 +726,20 @@
                       }
                   });
               });
-              updateStatus(`"${fileName}" successfully saved to Google Drive!`, false);
+
+              updateStatus(\`"\${fileName}" successfully saved to Google Drive!\`, false);
           } catch (error) {
               console.error('Error uploading file to Drive:', error);
-              const err = error; // Error
-              updateStatus(`Error saving to Drive: ${err.result?.error?.message || err.message || 'Unknown error'}`, true);
+              const errMessage = error.result?.error?.message || error.message || 'Unknown error during Drive upload';
+              updateStatus(\`Error saving to Drive: \${errMessage}\`, true);
           } finally {
-              updateSaveToDriveButton('Save to Google Drive', false);
+              updateSaveToDriveButton('Save to Google Drive', false); // Re-enable button
           }
       }
 
+
       function initApp() {
         // --- VERY IMPORTANT: API KEY CHECKS ---
-        // These alerts will show if you haven't replaced the placeholder API keys.
         let criticalConfigError = false;
         if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
             alert("CRITICAL ERROR: Gemini API Key is not configured!\n\nPlease edit the index.html file and replace 'YOUR_GEMINI_API_KEY_HERE' with your actual Gemini API Key. Transcription and note polishing will NOT work.");
@@ -735,11 +747,9 @@
         }
         if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
              alert("CONFIGURATION NOTICE: Google API Key (for Drive Picker) is not configured.\n\nPlease edit the index.html file and replace 'YOUR_GOOGLE_API_KEY_HERE' with your actual Google API Key if you want to use Google Drive features.");
-             // This is not strictly critical for core dictation, so don't set criticalConfigError = true
         }
         if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
              alert("CONFIGURATION NOTICE: Google Client ID (for Drive Auth) is not configured.\n\nPlease edit the index.html file and replace 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com' with your actual Google OAuth 2.0 Client ID if you want to use Google Drive features.");
-             // This is not strictly critical for core dictation
         }
 
         dictationButton = document.getElementById('dictationButton');
@@ -754,14 +764,21 @@
         saveToDriveButton = document.getElementById('saveToDriveButton');
         saveToDriveButtonText = document.getElementById('saveToDriveButtonText');
 
-        window.gapiLoadedCallback = gapiLoadedCallback;
-        window.gisLoadedCallback = gisLoadedCallback;
+        // Callbacks for Google API scripts are already set on window in this script.
+        // Ensure the script tags in HTML have onload="window.gapiLoadedCallback()" etc.
+        // The current script sets them on window directly.
 
         const gapiScript = document.querySelector('script[src="https://apis.google.com/js/api.js"]');
-        if (gapiScript) gapiScript.setAttribute('onload', 'gapiLoadedCallback()');
+        if (gapiScript && !gapiScript.getAttribute('onload')) { // Set if not already set by HTML
+             gapiScript.setAttribute('onload', 'window.gapiLoadedCallback()');
+        }
+
 
         const gisScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-        if (gisScript) gisScript.setAttribute('onload', 'gisLoadedCallback()');
+        if (gisScript && !gisScript.getAttribute('onload')) { // Set if not already set by HTML
+            gisScript.setAttribute('onload', 'window.gisLoadedCallback()');
+        }
+
 
         if (criticalConfigError) {
           updateStatus('CRITICAL: Gemini API Key not configured. App will not function correctly.', true);
@@ -769,11 +786,19 @@
           console.error('CRITICAL: Gemini API Key not configured.');
           displayCurrentPolishedNote('Application is not configured correctly. MISSING GEMINI API KEY.');
         } else {
-          genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-          updateStatus("Gemini API Key loaded.", false); // Initial ready status
+          try {
+            genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+            updateStatus("Gemini API Key loaded.", false);
+          } catch (e) {
+            console.error("Error initializing GoogleGenAI:", e);
+            updateStatus('CRITICAL: Error initializing Gemini API. Check API Key and network.', true);
+            criticalConfigError = true;
+            if (dictationButton) dictationButton.disabled = true;
+            displayCurrentPolishedNote('Application could not initialize Gemini API.');
+          }
         }
 
-        if (dictationButton) {
+        if (dictationButton && !criticalConfigError) { // Only add listener if not critically misconfigured
           dictationButton.addEventListener('click', toggleRecording);
         }
         if (saveToDriveButton) {
@@ -784,13 +809,13 @@
 
         loadNotesFromStorage();
         setActiveTab();
-        displayCurrentPolishedNote(PLACEHOLDER_TEXT);
-        resetToReadyState(criticalConfigError ? 'App disabled due to missing Gemini Key.' : 'Ready to dictate.'); // Initial status
-        checkDriveApiReady(); // This will update status related to Drive keys
+        displayCurrentPolishedNote(PLACEHOLDER_TEXT, INITIAL_TITLE); // Ensure title is also placeholder initially
+        resetToReadyState(criticalConfigError ? 'App disabled due to missing Gemini Key.' : 'Ready to dictate.');
+        checkDriveApiReady();
 
-        if (currentCategory !== 'Diary' && !criticalConfigError) { // Avoid error if savedNotes is empty due to no Gemini
-          renderPastNotes();
-        }
+        // if (currentCategory !== 'Diary' && !criticalConfigError) {
+        //   renderPastNotes(); // renderPastNotes is called by loadNotesFromStorage
+        // }
       }
       document.addEventListener('DOMContentLoaded', initApp);
     </script>
